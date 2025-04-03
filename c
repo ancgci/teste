@@ -1,6 +1,7 @@
 # Dependências para How-To-Crack-Bitcoin-Puzzle
 
 # Bibliotecas principais para manipulação de Bitcoin e Ethereum
+requests>=2.25.0
 bit==0.8.0
 eth-keys==0.4.0
 bitcoinlib==0.6.9
