@@ -1,4 +1,4 @@
-from bit import *
+from bit import Key
 from bit.format import bytes_to_wif
 import multiprocessing
 from multiprocessing import Pool
@@ -41,8 +41,9 @@ add = set(add)
 x=int(input("'start range Min 1-115792089237316195423570985008687907852837564279074904382605163141518161494335 -> "))
 y=int(input("stop range Max 115792089237316195423570985008687907852837564279074904382605163141518161494336 -> "))
 
-r = 0
-cores=1 #CPU Control Set Cores
+# Add type hints and initialize variables properly
+cores = 1  # type: int
+r = 0      # type: int
 
 def seek(r):
     F = []
@@ -58,28 +59,26 @@ def seek(r):
             uaddr = key2.address #Legacy uncompressed address
             myhex = "%064x" % ran
             private_key = myhex[:64]
+            # Replace file handling with context manager
             if caddr in add:
                 print (seconds_to_str(), "Nice One Found!!!",ran, caddr, wif2, private_key) #Legacy compressed address
                 s1 = str(ran)
                 s2 = caddr
                 s3 = wif2
                 s4 = private_key
-                f=open(u"CompressedWinner.txt","a") #Output File of Legacy compressed Wallet Found
-                f.write(s1+":"+s2+":"+s3+":"+s4)
-                f.write("\n")
-                f.close()
-                continue #break or continue
+                with open("CompressedWinner.txt", "a") as f:
+                    f.write(f"{s1}:{s2}:{s3}:{s4}\n")
+                continue
+            
             if uaddr in add:
                 print (seconds_to_str(), "Nice One Found!!!",ran, uaddr, wif, private_key) #Legacy uncompressed address
                 s1 = str(ran)
                 s2 = uaddr
                 s3 = wif
                 s4 = private_key
-                f=open(u"UncompressedWinner.txt","a") #Output File of Legacy uncompressed Wallet Found
-                f.write(s1+":"+s2+":"+s3+":"+s4)
-                f.write("\n")
-                f.close()
-                continue #break or continue
+                with open("UncompressedWinner.txt", "a") as f:
+                    f.write(f"{s1}:{s2}:{s3}:{s4}\n")
+                continue
             else:
                 colour_cyan = '\033[36m'
                 colour_reset = '\033[0;0;39m'
@@ -89,9 +88,19 @@ def seek(r):
 
 
 #CPU Control Command
+# Add proper process cleanup
 if __name__ == '__main__':
+    try:
         jobs = []
         for r in range(cores):
-                p = multiprocessing.Process(target=seek, args=(r,))
-                jobs.append(p)
-                p.start()
+            p = multiprocessing.Process(target=seek, args=(r,))
+            jobs.append(p)
+            p.start()
+        
+        # Wait for all processes to complete
+        for job in jobs:
+            job.join()
+    except KeyboardInterrupt:
+        # Handle graceful shutdown
+        for job in jobs:
+            job.terminate()

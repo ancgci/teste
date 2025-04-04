@@ -4,6 +4,8 @@ from binascii import hexlify
 import eth_keys
 from eth_keys import keys
 from bitcoinlib.keys import Key as BTCKey
+# Add these imports
+from bitcoinlib.keys import Address, HDKey, PublicKey, P2wpkhAddress
 import multiprocessing
 from multiprocessing import Pool
 import atexit
@@ -64,11 +66,20 @@ def seek(r):
             caddr = key1.address
             uaddr = key2.address
             saddr = key1.segwit_address
+            
+            # Fix bech32 address generation
             btc_key = BTCKey(wif2)
-            bcaddr = btc_key.address_obj.to_string(addr_type='p2wpkh')  # bech32 address
-            buaddr = BTCKey(wif).address_obj.to_string(addr_type='p2wpkh')
+            bcaddr = btc_key.address    # Get the address directly
+            
+            # Generate public keys
             pub1 = hexlify(key1.public_key).decode()
             pub2 = hexlify(key2.public_key).decode()
+            
+            # Create P2WPKH addresses
+            pubk1 = PublicKey.from_hex(pub1)
+            pubk2 = PublicKey.from_hex(pub2)
+            bcaddr = P2wpkhAddress(pubk1.hash(), version=0, mainnet=True)
+            buaddr = P2wpkhAddress(pubk2.hash(), version=0, mainnet=True)
             pubk1 = PublicKey.unhexlify(pub1)
             pubk2 = PublicKey.unhexlify(pub2)
             bcaddr = P2wpkhAddress(pubk1.hash(), version=0, mainnet=True)	#Segwit (bech32) compressed address
@@ -79,8 +90,12 @@ def seek(r):
             public_key_hex = keys.PrivateKey(private_key_bytes).public_key
             public_key_bytes = bytes.fromhex(str(public_key_hex)[2:])
             eaddr = keys.PublicKey(public_key_bytes).to_address()			#Eth address
+            # Replace file operations with context managers
             if caddr in add:
-                print ("Nice One Found!!!",ran, caddr, wif2, private_key) #Legacy compressed address
+                print("Nice One Found!!!", ran, caddr, wif2, private_key)
+                with open("CompressedWinner.txt", "a") as f:
+                    f.write(f"{s1}:{s2}:{s3}:{s4}\n")
+                continue
                 s1 = str(ran)
                 s2 = caddr
                 s3 = wif2
@@ -152,8 +167,17 @@ def seek(r):
                 print (colour_cyan + seconds_to_str() + colour_red + "----- Sequential Search for Bitcoin and ETH Puzzle Wallets -----" + colour_cyan + myhex, end='\r'  + colour_reset) # Running Display Output
 #CPU Control Command
 if __name__ == '__main__':
+    try:
         jobs = []
         for r in range(cores):
-                p = multiprocessing.Process(target=seek, args=(r,))
-                jobs.append(p)
-                p.start()
+            p = multiprocessing.Process(target=seek, args=(r,))
+            jobs.append(p)
+            p.start()
+        
+        # Wait for processes to complete
+        for job in jobs:
+            job.join()
+    except KeyboardInterrupt:
+        # Graceful shutdown
+        for job in jobs:
+            job.terminate()
